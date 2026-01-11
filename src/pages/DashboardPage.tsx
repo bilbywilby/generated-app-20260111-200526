@@ -1,17 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileSearch,
   Bookmark,
   Plus,
   Clock,
-  AlertTriangle,
   ChevronRight,
-  TrendingUp,
   LayoutDashboard,
   BarChart3,
   FileText
@@ -23,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { CaseTimeline, UserBookmark } from '@shared/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { analyzeTimeline } from '@/lib/forensic-logic';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, format } from 'date-fns';
 export function DashboardPage() {
   const { data: timelinesData, isLoading: loadingTimelines } = useQuery({
     queryKey: ['timelines'],
@@ -33,11 +30,11 @@ export function DashboardPage() {
     queryKey: ['bookmarks'],
     queryFn: () => api<{ items: UserBookmark[] }>('/api/bookmarks')
   });
-  const timelines = timelinesData?.items || [];
-  const bookmarks = bookmarksData?.items || [];
+  const timelines = useMemo(() => timelinesData?.items || [], [timelinesData]);
+  const bookmarks = useMemo(() => bookmarksData?.items || [], [bookmarksData]);
   const isLoading = loadingTimelines || loadingBookmarks;
   // Analytics Logic
-  const chartData = React.useMemo(() => {
+  const chartData = useMemo(() => {
     const counts: Record<string, number> = { "Access": 0, "Privacy": 0, "Billing": 0, "Consent": 0, "Quality": 0 };
     timelines.forEach(t => {
       const violations = analyzeTimeline(t.events);
@@ -52,7 +49,7 @@ export function DashboardPage() {
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [timelines]);
-  const avgRecordsDays = React.useMemo(() => {
+  const avgRecordsDays = useMemo(() => {
     let totalDays = 0;
     let count = 0;
     timelines.forEach(t => {
@@ -65,11 +62,11 @@ export function DashboardPage() {
     });
     return count > 0 ? Math.round(totalDays / count) : 0;
   }, [timelines]);
-  const stats = [
+  const stats = useMemo(() => [
     { label: "Active Analyses", value: timelines.length.toString(), icon: FileSearch, color: "text-blue-500" },
     { label: "Avg Records Wait", value: `${avgRecordsDays} Days`, icon: Clock, color: "text-purple-500" },
     { label: "Bookmarked Rights", value: bookmarks.length.toString(), icon: Bookmark, color: "text-yellow-600" },
-  ];
+  ], [timelines.length, avgRecordsDays, bookmarks.length]);
   const COLORS = ['#0ea5e9', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
   return (
     <AppLayout>

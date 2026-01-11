@@ -5,13 +5,13 @@ import { ForensicEvent } from '@/types/domain';
 import { analyzeTimeline } from '@/lib/forensic-logic';
 import { TimelineViz } from '@/components/TimelineViz';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Trash2, AlertTriangle, CheckCircle2, History, LayoutPanelLeft, Save, FileText } from 'lucide-react';
+import { Plus, Save, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -48,7 +48,6 @@ export function ForensicToolPage() {
     setNewDate('');
     setNewLabel('');
   };
-  const removeEvent = (id: string) => setEvents(events.filter(e => e.id !== id));
   const handleSave = () => {
     if (events.length < 1) return toast.error("Add at least one event to save");
     const title = caseTitle.trim() || `Analysis ${format(new Date(), 'PPp')}`;

@@ -22,4 +22,5 @@ export interface ViolationResult {
   description: string;
   statute: string;
   isTriggered: boolean;
+  remedy?: string;
 }

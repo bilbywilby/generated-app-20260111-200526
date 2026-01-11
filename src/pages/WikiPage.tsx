@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, BookOpen, Bookmark, Share2, Scale } from 'lucide-react';
+import { Search, Bookmark, Share2, Scale, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,13 +28,13 @@ export function WikiPage() {
         return api(`/api/bookmarks/${articleId}`, { method: 'DELETE' });
       } else {
         const article = WIKI_ARTICLES.find(a => a.id === articleId);
-        return api('/api/bookmarks', { 
-          method: 'POST', 
-          body: JSON.stringify({ 
-            articleId, 
-            articleTitle: article?.title, 
-            category: article?.category 
-          }) 
+        return api('/api/bookmarks', {
+          method: 'POST',
+          body: JSON.stringify({
+            articleId,
+            articleTitle: article?.title,
+            category: article?.category
+          })
         });
       }
     },
