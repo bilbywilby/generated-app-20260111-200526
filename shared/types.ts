@@ -1,4 +1,20 @@
-import type { ForensicEvent, RightCategory } from '../src/types/domain';
+export type RightCategory = 'Privacy' | 'Billing' | 'Access' | 'Consent' | 'Quality';
+export interface ForensicEvent {
+  id: string;
+  type: 'request' | 'receipt' | 'discharge' | 'filing';
+  date: string | Date; // Date as string for serializability, converted to Date in logic
+  label: string;
+  notes?: string;
+}
+export interface ViolationResult {
+  id: string;
+  severity: 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  statute: string;
+  isTriggered: boolean;
+  remedy?: string;
+}
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;

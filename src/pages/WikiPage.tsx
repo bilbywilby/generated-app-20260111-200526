@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Bookmark, Share2, Scale, History, Plus, Edit3, Trash2, ShieldCheck } from 'lucide-react';
+import { Search, Bookmark, Scale, History, Plus, Edit3, Trash2, ShieldCheck, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,18 +26,19 @@ export function WikiPage() {
     queryKey: ['wiki-articles'],
     queryFn: () => api<{ items: WikiArticle[] }>('/api/wiki-articles')
   });
-  const articles = articlesData?.items || [];
+  const articles = useMemo(() => articlesData?.items || [], [articlesData]);
   const { data: bookmarksData } = useQuery({
     queryKey: ['bookmarks'],
     queryFn: () => api<{ items: UserBookmark[] }>('/api/bookmarks')
   });
-  const bookmarks = bookmarksData?.items || [];
+  const bookmarks = useMemo(() => bookmarksData?.items || [], [bookmarksData]);
   // Mutations
   const toggleMutation = useMutation({
     mutationFn: async (articleId: string) => {
       const isBookmarked = bookmarks.some(b => b.articleId === articleId);
       if (isBookmarked) {
-        return api(`/api/bookmarks/${articleId}`, { method: 'DELETE' });
+        const target = bookmarks.find(b => b.articleId === articleId);
+        return api(`/api/bookmarks/${target?.id || articleId}`, { method: 'DELETE' });
       } else {
         const article = articles.find(a => a.id === articleId);
         return api('/api/bookmarks', {
@@ -79,7 +80,7 @@ export function WikiPage() {
     mutationFn: (id: string) => api(`/api/wiki-articles/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wiki-articles'] });
-      toast.success("Article deleted (soft-delete)");
+      toast.success("Article deleted");
       if (selectedId) setSelectedId(null);
     }
   });
@@ -91,8 +92,9 @@ export function WikiPage() {
     );
   }, [articles, search]);
   const activeArticle = useMemo(() => {
-    if (!selectedId && articles.length > 0) return articles[0];
-    return articles.find(a => a.id === (selectedId || '')) || null;
+    if (articles.length === 0) return null;
+    if (!selectedId) return articles[0];
+    return articles.find(a => a.id === selectedId) || articles[0];
   }, [articles, selectedId]);
   const isBookmarked = (articleId: string) => bookmarks.some(b => b.articleId === articleId);
   const handleEdit = (article: WikiArticle) => {
@@ -193,11 +195,11 @@ export function WikiPage() {
                   onClick={() => setSelectedId(article.id)}
                   className={cn(
                     "flex flex-col items-start p-4 rounded-xl border transition-all text-left",
-                    (selectedId === article.id || (!selectedId && activeArticle?.id === article.id)) ? "bg-primary text-primary-foreground shadow-lg" : "bg-card hover:bg-muted/50"
+                    (activeArticle?.id === article.id) ? "bg-primary text-primary-foreground shadow-lg" : "bg-card hover:bg-muted/50"
                   )}
                 >
                   <div className="flex items-center justify-between w-full mb-1">
-                    <Badge variant={(selectedId === article.id || (!selectedId && activeArticle?.id === article.id)) ? "secondary" : "outline"} className="text-[9px]">
+                    <Badge variant={(activeArticle?.id === article.id) ? "secondary" : "outline"} className="text-[9px]">
                       {article.category}
                     </Badge>
                     {isBookmarked(article.id) && <Bookmark className="h-3 w-3 fill-current" />}

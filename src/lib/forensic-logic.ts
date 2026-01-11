@@ -1,10 +1,11 @@
-import { ForensicEvent, ViolationResult } from '@/types/domain';
+import { ForensicEvent, ViolationResult } from '@shared/types';
 import { differenceInDays, isBefore, addDays, format } from 'date-fns';
 export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
   const violations: ViolationResult[] = [];
   const getEventDate = (e: ForensicEvent) => new Date(e.date);
-  const request = events.find(e => e.type === 'request');
-  const receipt = events.find(e => e.type === 'receipt');
+  const sortedEvents = [...events].sort((a, b) => getEventDate(a).getTime() - getEventDate(b).getTime());
+  const request = sortedEvents.find(e => e.type === 'request');
+  const receipt = sortedEvents.find(e => e.type === 'receipt');
   if (request && receipt) {
     const days = differenceInDays(getEventDate(receipt), getEventDate(request));
     const isViolation = days > 30;
@@ -18,10 +19,10 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
       statute: '42 Pa. C.S. § 6152',
       isTriggered: isViolation,
       remedy: isViolation ? "File a complaint with the PA Department of Health for non-compliance with Act 169." : undefined
-    } as any);
+    });
   }
-  const incident = events.find(e => e.type === 'filing');
-  const notification = events.find(e => e.type === 'receipt' && e.label.toLowerCase().includes('notice'));
+  const incident = sortedEvents.find(e => e.type === 'filing');
+  const notification = sortedEvents.find(e => e.type === 'receipt' && e.label.toLowerCase().includes('notice'));
   if (incident && notification) {
     const days = differenceInDays(getEventDate(notification), getEventDate(incident));
     const isViolation = days > 7;
@@ -35,11 +36,11 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
       statute: '40 P.S. § 1303.308',
       isTriggered: isViolation,
       remedy: isViolation ? "Request a formal review of the incident from the hospital Patient Safety Officer." : undefined
-    } as any);
+    });
   }
-  const procedure = events.find(e => e.label.toLowerCase().includes('surgery') || e.label.toLowerCase().includes('procedure'));
-  if (procedure && receipt) {
-    const hasConsent = receipt.notes?.toLowerCase().includes('consent') || receipt.label.toLowerCase().includes('signed');
+  const procedure = sortedEvents.find(e => e.label.toLowerCase().includes('surgery') || e.label.toLowerCase().includes('procedure'));
+  if (procedure) {
+    const hasConsent = sortedEvents.some(e => e.notes?.toLowerCase().includes('consent') || e.label.toLowerCase().includes('signed'));
     if (!hasConsent) {
       violations.push({
         id: 'v-consent-missing',
@@ -49,10 +50,10 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
         statute: '40 P.S. § 1303.504',
         isTriggered: true,
         remedy: "Request a specific copy of your signed consent form from the facility's Risk Management department."
-      } as any);
+      });
     }
   }
-  const denial = events.find(e => e.label.toLowerCase().includes('denial') || e.label.toLowerCase().includes('denied'));
+  const denial = sortedEvents.find(e => e.label.toLowerCase().includes('denial') || e.label.toLowerCase().includes('denied'));
   if (denial) {
     const today = new Date();
     const deadline = addDays(getEventDate(denial), 60);
@@ -67,7 +68,7 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
       statute: '28 Pa. Code § 51.3',
       isTriggered: !isExpired,
       remedy: !isExpired ? "Prepare and submit your appeal documentation to the DOH Bureau of Quality Assurance." : "Consult counsel regarding potential tolling of the appeal deadline."
-    } as any);
+    });
   }
   return violations;
 }

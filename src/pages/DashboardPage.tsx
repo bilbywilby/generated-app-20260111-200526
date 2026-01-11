@@ -128,7 +128,9 @@ export function DashboardPage() {
                         </div>
                         <div className="flex flex-col">
                           <span className="font-bold text-sm">{caseItem.title}</span>
-                          <span className="text-xs text-muted-foreground">{format(new Date(caseItem.updatedAt), 'PP')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {caseItem.updatedAt ? format(new Date(caseItem.updatedAt), 'PP') : 'N/A'}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
