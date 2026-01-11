@@ -1,11 +1,25 @@
 import { IndexedEntity, Entity } from "./core-utils";
-import type { User, CaseTimeline, UserBookmark, ImmutableEvent, ChainState } from "@shared/types";
-import { MOCK_USERS } from "@shared/mock-data";
+import type { User, CaseTimeline, UserBookmark, ImmutableEvent, ChainState, WikiArticle } from "@shared/types";
+import { MOCK_USERS, MOCK_WIKI_ARTICLES } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
   static readonly initialState: User = { id: "", name: "" };
   static seedData = MOCK_USERS;
+}
+export class WikiArticleEntity extends IndexedEntity<WikiArticle> {
+  static readonly entityName = "wiki-article";
+  static readonly indexName = "wiki-articles";
+  static readonly initialState: WikiArticle = {
+    id: "",
+    title: "",
+    category: "Access",
+    summary: "",
+    content: "",
+    lastUpdated: "",
+    authorObf: "system"
+  };
+  static seedData = MOCK_WIKI_ARTICLES;
 }
 export class CaseTimelineEntity extends IndexedEntity<CaseTimeline> {
   static readonly entityName = "case-timeline";

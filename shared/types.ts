@@ -1,4 +1,4 @@
-import type { ForensicEvent } from '../src/types/domain';
+import type { ForensicEvent, RightCategory } from '../src/types/domain';
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
@@ -8,6 +8,24 @@ export interface User {
   id: string;
   name: string;
   onboardingCompleted?: boolean;
+}
+export interface WikiArticle {
+  id: string;
+  title: string;
+  category: RightCategory;
+  summary: string;
+  content: string;
+  statuteReference?: string;
+  lastUpdated: string;
+  authorObf: string;
+  deleted?: boolean;
+}
+export interface WikiArticleInput {
+  title: string;
+  category: RightCategory;
+  summary: string;
+  content: string;
+  statuteReference?: string;
 }
 export interface CaseTimeline {
   id: string;
@@ -30,6 +48,7 @@ export interface ImmutableEvent {
   timestamp: string;
   prevHash: string;
   hash: string;
+  resourceId?: string;
 }
 export interface ChainState {
   id: string;

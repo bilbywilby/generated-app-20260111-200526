@@ -1,77 +1,106 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, CaseTimelineEntity, BookmarkEntity, EventEntity, ChainStateEntity } from "./entities";
+import { UserEntity, CaseTimelineEntity, BookmarkEntity, EventEntity, ChainStateEntity, WikiArticleEntity } from "./entities";
 import { ok, bad, notFound } from './core-utils';
-import type { CaseTimeline, UserBookmark, ImmutableEvent, ChainState } from "@shared/types";
+import type { CaseTimeline, UserBookmark, ImmutableEvent, ChainState, WikiArticle } from "@shared/types";
 async function sha256(message: string) {
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
-export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  app.get('/openapi.json', (c) => {
-    return c.json({
-      openapi: "3.0.0",
-      info: { title: "Keystone Health Advocate API", version: "1.0.0" },
-      paths: {
-        "/api/timelines": { get: { summary: "List timelines" }, post: { summary: "Create timeline" } },
-        "/api/events": {
-          get: { summary: "Query audit log" },
-          post: { summary: "Append tamper-evident event" }
-        },
-        "/api/bookmarks": { get: { summary: "List bookmarks" } }
-      }
-    });
-  });
-  app.get('/api/events/by-time', async (c) => {
-    const list = await EventEntity.list(c.env);
-    return ok(c, { items: list.items, isChainIntact: true });
-  });
-  app.post('/api/events', async (c) => {
-    const body = await c.req.json();
-    if (!body.type || !body.payload) return bad(c, "Missing type or payload");
-    const chainStateEntity = new ChainStateEntity(c.env);
-    let finalState: ChainState | null = null;
-    // Manual CAS retry loop because we need to perform async hashing inside the transaction
-    for (let i = 0; i < 4; i++) {
-      const state = await chainStateEntity.getState();
-      const eventId = crypto.randomUUID();
-      const timestamp = new Date().toISOString();
-      const payloadStr = JSON.stringify(body.payload);
-      const dataToHash = `${state.latestHash}|${body.type}|${payloadStr}|${timestamp}`;
-      const hash = await sha256(dataToHash);
-      const nextState: ChainState = {
-        ...state,
-        latestHash: hash,
-        latestEventId: eventId,
-        count: state.count + 1
+async function logEvent(env: Env, type: string, payload: any, resourceId?: string) {
+  const chainStateEntity = new ChainStateEntity(env);
+  for (let i = 0; i < 4; i++) {
+    const state = await chainStateEntity.getState();
+    const eventId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+    const payloadStr = JSON.stringify(payload);
+    const dataToHash = `${state.latestHash}|${type}|${payloadStr}|${timestamp}`;
+    const hash = await sha256(dataToHash);
+    const nextState: ChainState = {
+      ...state,
+      latestHash: hash,
+      latestEventId: eventId,
+      count: state.count + 1
+    };
+    try {
+      await chainStateEntity.save(nextState);
+      const newEvent: ImmutableEvent = {
+        id: eventId,
+        type,
+        payload,
+        timestamp,
+        prevHash: state.latestHash,
+        hash,
+        resourceId
       };
-      try {
-        await chainStateEntity.save(nextState);
-        // Create the event record after successful state update
-        const newEvent: ImmutableEvent = {
-          id: eventId,
-          type: body.type,
-          payload: body.payload,
-          timestamp,
-          prevHash: state.latestHash,
-          hash
-        };
-        await EventEntity.create(c.env, newEvent);
-        finalState = nextState;
-        break;
-      } catch (e) {
-        if (i === 3) return bad(c, "Concurrent modification detected");
-        continue;
-      }
+      await EventEntity.create(env, newEvent);
+      return nextState;
+    } catch (e) {
+      if (i === 3) throw e;
     }
-    return ok(c, finalState);
+  }
+}
+export function userRoutes(app: Hono<{ Bindings: Env }>) {
+  app.get('/api/health', (c) => ok(c, { status: "ok" }));
+  // Wiki Articles CRUD
+  app.get('/api/wiki-articles', async (c) => {
+    await WikiArticleEntity.ensureSeed(c.env);
+    const list = await WikiArticleEntity.list(c.env);
+    return ok(c, { items: list.items.filter(a => !a.deleted) });
   });
-  app.get('/api/timelines', async (c) => {
-    const page = await CaseTimelineEntity.list(c.env);
-    return ok(c, page);
+  app.post('/api/wiki-articles', async (c) => {
+    const body = await c.req.json();
+    const id = crypto.randomUUID();
+    const article: WikiArticle = {
+      ...body,
+      id,
+      lastUpdated: new Date().toISOString(),
+      authorObf: "expert-user",
+      deleted: false
+    };
+    const result = await WikiArticleEntity.create(c.env, article);
+    await logEvent(c.env, "wiki_create", article, id);
+    return ok(c, result);
   });
+  app.put('/api/wiki-articles/:id', async (c) => {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const entity = new WikiArticleEntity(c.env, id);
+    if (!(await entity.exists())) return notFound(c);
+    const updated = {
+      ...body,
+      id,
+      lastUpdated: new Date().toISOString(),
+      authorObf: "expert-user"
+    };
+    await entity.save(updated);
+    await logEvent(c.env, "wiki_edit", updated, id);
+    return ok(c, updated);
+  });
+  app.delete('/api/wiki-articles/:id', async (c) => {
+    const id = c.req.param('id');
+    const entity = new WikiArticleEntity(c.env, id);
+    if (!(await entity.exists())) return notFound(c);
+    const current = await entity.getState();
+    const softDeleted = { ...current, deleted: true };
+    await entity.save(softDeleted);
+    await logEvent(c.env, "wiki_delete", { id }, id);
+    return ok(c, { success: true });
+  });
+  // Events & Audit Log
+  app.get('/api/events/by-time', async (c) => {
+    const resourceId = c.req.query('resourceId');
+    const list = await EventEntity.list(c.env);
+    let items = list.items;
+    if (resourceId) {
+      items = items.filter(ev => ev.resourceId === resourceId);
+    }
+    return ok(c, { items: items.reverse(), isChainIntact: true });
+  });
+  // Timelines
+  app.get('/api/timelines', async (c) => ok(c, await CaseTimelineEntity.list(c.env)));
   app.get('/api/timelines/:id', async (c) => {
     const entity = new CaseTimelineEntity(c.env, c.req.param('id'));
     if (!(await entity.exists())) return notFound(c);
@@ -88,6 +117,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     return ok(c, await CaseTimelineEntity.create(c.env, timeline));
   });
+  // Bookmarks
   app.get('/api/bookmarks', async (c) => ok(c, await BookmarkEntity.list(c.env)));
   app.post('/api/bookmarks', async (c) => {
     const body = await c.req.json();
