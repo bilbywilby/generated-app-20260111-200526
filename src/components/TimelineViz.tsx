@@ -1,16 +1,15 @@
 import React from 'react';
-import { ForensicEvent, ViolationResult } from '@shared/types';
-import { format } from 'date-fns';
+import { ForensicEvent } from '@/types/domain';
+import { format, differenceInDays } from 'date-fns';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Circle, AlertCircle } from 'lucide-react';
+import { Circle, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 interface TimelineVizProps {
   events: ForensicEvent[];
-  violations: ViolationResult[];
+  violations: any[];
 }
 export function TimelineViz({ events, violations }: TimelineVizProps) {
-  if (!events || events.length === 0) return null;
-  const safeViolations = violations || [];
+  if (events.length === 0) return null;
   return (
     <div className="relative py-10 px-4">
       {/* Vertical Line */}
@@ -18,7 +17,7 @@ export function TimelineViz({ events, violations }: TimelineVizProps) {
       <div className="flex flex-col gap-12 relative">
         {events.map((event, index) => {
           const isEven = index % 2 === 0;
-          const isViolationNode = safeViolations.some(v => v.isTriggered && v.title.toLowerCase().includes(event.type));
+          const isViolationNode = violations.some(v => v.isTriggered && v.title.toLowerCase().includes(event.type));
           return (
             <motion.div
               key={event.id}
@@ -37,16 +36,14 @@ export function TimelineViz({ events, violations }: TimelineVizProps) {
               )}>
                 <div className={cn(
                   "p-4 rounded-xl border bg-card shadow-sm hover:shadow-md transition-shadow",
-                  isViolationNode ? "border-destructive/30 bg-destructive/5" : "border-border"
+                  isViolationNode ? "border-destructive/30" : "border-border"
                 )}>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       {event.type}
                     </span>
                     <h4 className="font-bold text-foreground">{event.label}</h4>
-                    <time className="text-xs text-primary font-medium">
-                      {format(new Date(event.date), 'MMMM d, yyyy')}
-                    </time>
+                    <time className="text-xs text-primary font-medium">{format(event.date, 'MMMM d, yyyy')}</time>
                   </div>
                 </div>
               </div>

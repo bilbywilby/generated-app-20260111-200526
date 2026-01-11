@@ -14,11 +14,17 @@ import '@/index.css'
 import { HomePage } from '@/pages/HomePage'
 import { WikiPage } from '@/pages/WikiPage'
 import { ForensicToolPage } from '@/pages/ForensicToolPage'
+import { DashboardPage } from '@/pages/DashboardPage'
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
     path: "/",
     element: <HomePage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/dashboard",
+    element: <DashboardPage />,
     errorElement: <RouteErrorBoundary />,
   },
   {
