@@ -46,5 +46,54 @@ In Pennsylvania, you are protected from "balance billing" for emergency services
 ### Good Faith Estimates
 Uninsured or self-pay patients have the right to a "Good Faith Estimate" of expected charges before service is provided.
     `
+  },
+  {
+    id: 'informed-consent-pa',
+    title: 'Informed Consent Requirements',
+    category: 'Consent',
+    summary: 'Common law and MCARE Act requirements for surgical and high-risk procedures.',
+    statuteReference: '40 P.S. § 1303.504',
+    lastUpdated: '2024-03-01',
+    content: `
+### Scope of Consent
+In Pennsylvania, physicians (not nurses or residents) have a non-delegable duty to obtain informed consent. 
+### Required Disclosures
+You must be informed of:
+- The nature of the procedure.
+- Risks and complications.
+- Alternatives and their risks.
+### High-Risk Procedures
+Consent is required for surgeries, radiation, chemotherapy, blood transfusions, and experimental medications.
+    `
+  },
+  {
+    id: 'mental-health-act-63',
+    title: 'Mental Health Records (Act 63)',
+    category: 'Privacy',
+    summary: 'Stricter privacy standards for psychiatric and substance abuse records in PA.',
+    statuteReference: '50 P.S. § 7111',
+    lastUpdated: '2024-01-05',
+    content: `
+### Confidentiality
+Psychiatric records are more strictly protected than general medical records. Third-party disclosure requires a specific, separate authorization.
+### Access
+While you have the right to view your records, a provider can deny access if they believe viewing would be "detrimental" to your health, though this can be challenged.
+    `
+  },
+  {
+    id: 'nursing-home-rights',
+    title: 'Nursing Home Bill of Rights',
+    category: 'Quality',
+    summary: 'Protections for residents in PA long-term care facilities.',
+    statuteReference: '28 Pa. Code § 201.29',
+    lastUpdated: '2023-12-15',
+    content: `
+### Key Protections
+- Right to choose your own physician.
+- Right to be free from chemical or physical restraints.
+- Right to manage your own financial affairs.
+### Discharge Rights
+Residents must be given **30 days notice** before a non-emergency transfer or discharge.
+    `
   }
 ];

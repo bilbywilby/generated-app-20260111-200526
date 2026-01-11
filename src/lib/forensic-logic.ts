@@ -2,11 +2,13 @@ import { ForensicEvent, ViolationResult } from '@/types/domain';
 import { differenceInDays, isBefore, addDays } from 'date-fns';
 export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
   const violations: ViolationResult[] = [];
+  // Safe date conversion for persisted data (ISO strings)
+  const getEventDate = (e: ForensicEvent) => new Date(e.date);
   // Rule 1: Medical Records Request (30 Day Limit - Act 169)
   const request = events.find(e => e.type === 'request');
   const receipt = events.find(e => e.type === 'receipt');
   if (request && receipt) {
-    const days = differenceInDays(receipt.date, request.date);
+    const days = differenceInDays(getEventDate(receipt), getEventDate(request));
     const isViolation = days > 30;
     violations.push({
       id: 'v-act-169-30d',
@@ -16,15 +18,15 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
         ? `Records were delivered in ${days} days, exceeding the PA 30-day statutory limit (Act 169).`
         : `Records were delivered within the legal 30-day window (${days} days).`,
       statute: '42 Pa. C.S. § 6152',
-      isTriggered: isViolation
-    });
+      isTriggered: isViolation,
+      remedy: isViolation ? "File a complaint with the PA Department of Health for non-compliance with Act 169." : undefined
+    } as any);
   }
   // Rule 2: Serious Event Disclosure (7 Day Limit - MCARE)
-  // We use "discharge" or "filing" (incident discovery) to check against "receipt" of notice
   const incident = events.find(e => e.type === 'filing');
   const notification = events.find(e => e.type === 'receipt' && e.label.toLowerCase().includes('notice'));
   if (incident && notification) {
-    const days = differenceInDays(notification.date, incident.date);
+    const days = differenceInDays(getEventDate(notification), getEventDate(incident));
     const isViolation = days > 7;
     violations.push({
       id: 'v-mcare-7d',
@@ -34,25 +36,43 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
         ? `The facility failed to provide written notice of a serious event within 7 days of discovery (${days} days elapsed).`
         : `Notice was provided within the 7-day mandatory disclosure window.`,
       statute: '40 P.S. § 1303.308',
-      isTriggered: isViolation
-    });
+      isTriggered: isViolation,
+      remedy: isViolation ? "Request a formal review of the incident from the hospital Patient Safety Officer." : undefined
+    } as any);
   }
-  // Rule 3: Good Faith Estimate (3 Day Rule)
-  const requestGFE = events.find(e => e.label.toLowerCase().includes('estimate request'));
-  const receivedGFE = events.find(e => e.label.toLowerCase().includes('estimate received'));
-  if (requestGFE && receivedGFE) {
-    const days = differenceInDays(receivedGFE.date, requestGFE.date);
-    const isViolation = days > 3;
+  // Rule 4: Informed Consent Documentation
+  const procedure = events.find(e => e.label.toLowerCase().includes('surgery') || e.label.toLowerCase().includes('procedure'));
+  if (procedure && receipt) {
+    const hasConsent = receipt.notes?.toLowerCase().includes('consent') || receipt.label.toLowerCase().includes('signed');
+    if (!hasConsent) {
+      violations.push({
+        id: 'v-consent-missing',
+        severity: 'medium',
+        title: 'Informed Consent Documentation',
+        description: 'No signed informed consent form was identified in the provided medical records for the recorded procedure.',
+        statute: '40 P.S. § 1303.504',
+        isTriggered: true,
+        remedy: "Request a specific copy of your signed consent form from the facility's Risk Management department."
+      } as any);
+    }
+  }
+  // Rule 5: Appeal Deadline (PA Department of Health)
+  const denial = events.find(e => e.label.toLowerCase().includes('denial') || e.label.toLowerCase().includes('denied'));
+  if (denial) {
+    const today = new Date();
+    const deadline = addDays(getEventDate(denial), 60);
+    const isExpired = isBefore(deadline, today);
     violations.push({
-      id: 'v-no-surprises-3d',
-      severity: isViolation ? 'medium' : 'low',
-      title: 'Good Faith Estimate Timeliness',
-      description: isViolation
-        ? `The Good Faith Estimate was provided ${days} days after request, exceeding the 3-business-day standard for non-emergency care.`
-        : `Good Faith Estimate provided within standard timeframe.`,
-      statute: 'Title 45 CFR § 149.610',
-      isTriggered: isViolation
-    });
+      id: 'v-appeal-60d',
+      severity: isExpired ? 'high' : 'medium',
+      title: 'DOH Appeal Window',
+      description: isExpired 
+        ? "The standard 60-day window for filing an appeal with the PA Department of Health has passed."
+        : `You have until ${format(deadline, 'PPP')} to file a formal appeal (60 days from denial).`,
+      statute: '28 Pa. Code § 51.3',
+      isTriggered: !isExpired,
+      remedy: !isExpired ? "Prepare and submit your appeal documentation to the DOH Bureau of Quality Assurance." : "Consult counsel regarding potential tolling of the appeal deadline."
+    } as any);
   }
   return violations;
 }

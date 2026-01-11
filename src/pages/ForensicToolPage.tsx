@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ForensicEvent } from '@/types/domain';
 import { analyzeTimeline } from '@/lib/forensic-logic';
@@ -10,24 +11,27 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Trash2, AlertTriangle, CheckCircle2, History, LayoutPanelLeft, Save } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, CheckCircle2, History, LayoutPanelLeft, Save, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 export function ForensicToolPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [events, setEvents] = useState<ForensicEvent[]>([]);
   const [newType, setNewType] = useState<ForensicEvent['type']>('request');
   const [newDate, setNewDate] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [caseTitle, setCaseTitle] = useState('');
+  const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
   const saveMutation = useMutation({
-    mutationFn: (data: { title: string, events: ForensicEvent[] }) => 
-      api('/api/timelines', { method: 'POST', body: JSON.stringify(data) }),
-    onSuccess: () => {
+    mutationFn: (data: { title: string, events: ForensicEvent[] }) =>
+      api<{ id: string }>('/api/timelines', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: (res) => {
       toast.success("Case saved to dashboard");
+      setSavedCaseId(res.id);
       queryClient.invalidateQueries({ queryKey: ['timelines'] });
     },
     onError: () => toast.error("Failed to save case")
@@ -40,13 +44,11 @@ export function ForensicToolPage() {
       date: new Date(newDate),
       label: newLabel,
     };
-    setEvents([...events, event].sort((a, b) => a.date.getTime() - b.date.getTime()));
+    setEvents([...events, event].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     setNewDate('');
     setNewLabel('');
   };
-  const removeEvent = (id: string) => {
-    setEvents(events.filter(e => e.id !== id));
-  };
+  const removeEvent = (id: string) => setEvents(events.filter(e => e.id !== id));
   const handleSave = () => {
     if (events.length < 1) return toast.error("Add at least one event to save");
     const title = caseTitle.trim() || `Analysis ${format(new Date(), 'PPp')}`;
@@ -64,12 +66,10 @@ export function ForensicToolPage() {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <Card className="lg:col-span-4 sticky top-24">
-            <CardHeader>
-              <CardTitle className="text-lg">Add Timeline Event</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Add Timeline Event</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="type">Event Type</Label>
+                <Label>Event Type</Label>
                 <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -81,51 +81,28 @@ export function ForensicToolPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="label">Label</Label>
+                <Label>Label</Label>
                 <Input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="e.g. Request to Mercy Hosp" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="date">Date</Label>
+                <Label>Date</Label>
                 <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} />
               </div>
-              <Button onClick={addEvent} className="w-full">
+              <Button onClick={addEvent} className="w-full rounded-full">
                 <Plus className="mr-2 h-4 w-4" /> Add to Timeline
               </Button>
-              <div className="mt-8">
-                <h4 className="text-sm font-semibold flex items-center gap-2 mb-4">
-                  <History className="h-4 w-4 text-muted-foreground" /> Event History
-                </h4>
-                <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-2">
-                  {events.map(event => (
-                    <div key={event.id} className="flex items-center justify-between p-2 rounded border bg-muted/20 group">
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="text-[10px] font-bold uppercase text-primary/70">{event.type}</span>
-                        <span className="text-sm font-medium truncate">{event.label}</span>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => removeEvent(event.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </CardContent>
           </Card>
           <div className="lg:col-span-8 flex flex-col gap-6">
             <Tabs defaultValue="visual" className="w-full">
               <div className="flex items-center justify-between mb-4">
-                <TabsList>
-                  <TabsTrigger value="visual"><LayoutPanelLeft className="mr-2 h-4 w-4" /> Visual</TabsTrigger>
-                  <TabsTrigger value="report"><AlertTriangle className="mr-2 h-4 w-4" /> Report</TabsTrigger>
+                <TabsList className="rounded-full">
+                  <TabsTrigger value="visual" className="rounded-full">Visual</TabsTrigger>
+                  <TabsTrigger value="report" className="rounded-full">Findings</TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-3">
-                  <Input 
-                    placeholder="Case Name..." 
-                    className="w-48 h-9" 
-                    value={caseTitle} 
-                    onChange={e => setCaseTitle(e.target.value)}
-                  />
-                  <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
+                  <Input placeholder="Case Name..." className="w-48 h-9" value={caseTitle} onChange={e => setCaseTitle(e.target.value)} />
+                  <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending} className="rounded-full">
                     <Save className="mr-2 h-4 w-4" /> {saveMutation.isPending ? "Saving..." : "Save Case"}
                   </Button>
                 </div>
@@ -138,17 +115,25 @@ export function ForensicToolPage() {
                 </CardContent></Card>
               </TabsContent>
               <TabsContent value="report">
-                <Card><CardContent className="pt-6 space-y-4">
-                  {violations.map(v => (
-                    <div key={v.id} className={cn("p-4 rounded-lg border-l-4", v.isTriggered ? "bg-destructive/5 border-l-destructive" : "bg-emerald-50/50 border-l-emerald-500")}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-sm">{v.title}</span>
-                        <Badge variant={v.isTriggered ? "destructive" : "secondary"}>{v.isTriggered ? "Violation" : "Compliant"}</Badge>
+                <div className="flex flex-col gap-4">
+                  {savedCaseId && (
+                    <Button variant="secondary" onClick={() => navigate(`/report/${savedCaseId}`)} className="w-full h-12 shadow-sm">
+                      <FileText className="mr-2 h-5 w-5" /> View Official Report Document
+                    </Button>
+                  )}
+                  <div className="space-y-4">
+                    {violations.map(v => (
+                      <div key={v.id} className={cn("p-4 rounded-lg border-l-4", v.isTriggered ? "bg-destructive/5 border-l-destructive" : "bg-emerald-50/50 border-l-emerald-500")}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-sm">{v.title}</span>
+                          <Badge variant={v.isTriggered ? "destructive" : "secondary"}>{v.isTriggered ? "Violation" : "Compliant"}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{v.description}</p>
+                        {v.isTriggered && v.remedy && <p className="text-xs mt-3 font-bold text-destructive">REMEDY: {v.remedy}</p>}
                       </div>
-                      <p className="text-sm text-muted-foreground">{v.description}</p>
-                    </div>
-                  ))}
-                </CardContent></Card>
+                    ))}
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
