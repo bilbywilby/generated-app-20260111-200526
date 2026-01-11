@@ -1,14 +1,16 @@
 import React from "react";
-import { 
-  BookOpen, 
-  FileSearch, 
-  Home, 
-  Settings, 
-  ShieldCheck, 
-  Scale, 
+import {
+  BookOpen,
+  FileSearch,
+  Home,
+  Settings,
+  ShieldCheck,
+  Scale,
   LayoutDashboard,
   ExternalLink,
-  MessageCircleQuestion
+  MessageCircleQuestion,
+  User,
+  CloudCheck
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -21,7 +23,9 @@ import {
   SidebarMenuButton,
   SidebarSeparator,
   SidebarGroupLabel,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 export function AppSidebar(): JSX.Element {
   const location = useLocation();
   const primaryItems = [
@@ -79,30 +83,37 @@ export function AppSidebar(): JSX.Element {
         </SidebarGroup>
         <SidebarSeparator />
         <SidebarGroup>
-          <SidebarGroupLabel>Resources</SidebarGroupLabel>
+          <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="PA Statutes">
-                <Scale className="h-4 w-4" />
-                <span>PA Statutes Database</span>
-                <ExternalLink className="ml-auto h-3 w-3 opacity-50" />
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Support">
+              <SidebarMenuButton tooltip="Help">
                 <MessageCircleQuestion className="h-4 w-4" />
                 <span>Help & FAQ</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Settings">
-                <Settings className="h-4 w-4" />
-                <span>Account Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t p-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton className="h-auto p-2 hover:bg-muted">
+              <div className="flex items-center gap-3 w-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">PA</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start overflow-hidden">
+                  <span className="text-sm font-bold truncate">PA Advocate</span>
+                  <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                    <CloudCheck className="h-3 w-3" />
+                    <span>Cloud Sync Active</span>
+                  </div>
+                </div>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
