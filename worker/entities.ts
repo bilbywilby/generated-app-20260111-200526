@@ -1,16 +1,16 @@
 import { IndexedEntity, Entity } from "./core-utils";
-import type { 
-  User, 
-  CaseTimeline, 
-  UserBookmark, 
-  ImmutableEvent, 
-  ChainState, 
+import type {
+  User,
+  CaseTimeline,
+  UserBookmark,
+  ImmutableEvent,
+  ChainState,
   WikiArticle,
   HealthRate,
   CountyMapping
 } from "@shared/types";
-import { 
-  MOCK_USERS, 
+import {
+  MOCK_USERS,
   MOCK_WIKI_ARTICLES,
   MOCK_HEALTH_RATES,
   MOCK_COUNTY_MAPPINGS
@@ -44,7 +44,9 @@ export class HealthRateEntity extends IndexedEntity<HealthRate> {
     planType: "Silver",
     ratingArea: 1,
     basePremium2026: 0,
-    projectedIncrease: 0
+    projectedIncrease: 0,
+    glp1Covered: false,
+    avgDeductible: 0
   };
   static seedData = MOCK_HEALTH_RATES;
 }
