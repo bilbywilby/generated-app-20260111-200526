@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
+import { Link } from 'react-router-dom';
 import { UserBookmark } from '@shared/types';
 export function WikiPage() {
   const queryClient = useQueryClient();
@@ -99,6 +100,9 @@ export function WikiPage() {
                 <div className="flex items-center justify-between mb-4">
                   <Badge variant="outline" className="px-3 py-1 uppercase">{activeArticle.category}</Badge>
                   <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild className="rounded-full text-xs gap-1.5">
+                      <Link to={`/wiki/${activeArticle.id}/provenance`}><History className="h-3.5 w-3.5" /> Provenance</Link>
+                    </Button>
                     <Button variant="outline" size="icon" className="rounded-full" onClick={() => toggleMutation.mutate(activeArticle.id)}>
                       <Bookmark className={cn("h-4 w-4", isBookmarked(activeArticle.id) && "fill-primary text-primary")} />
                     </Button>

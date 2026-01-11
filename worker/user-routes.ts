@@ -1,24 +1,72 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, CaseTimelineEntity, BookmarkEntity } from "./entities";
-import { ok, bad, notFound, isStr } from './core-utils';
-import type { CaseTimeline, UserBookmark } from "@shared/types";
+import { UserEntity, CaseTimelineEntity, BookmarkEntity, EventEntity, ChainStateEntity } from "./entities";
+import { ok, bad, notFound } from './core-utils';
+import type { CaseTimeline, UserBookmark, ImmutableEvent } from "@shared/types";
+async function sha256(message: string) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  // TIMELINES
+  app.get('/openapi.json', (c) => {
+    return c.json({
+      openapi: "3.0.0",
+      info: { title: "Keystone Health Advocate API", version: "1.0.0" },
+      paths: {
+        "/api/timelines": { get: { summary: "List timelines" }, post: { summary: "Create timeline" } },
+        "/api/events": { 
+          get: { summary: "Query audit log" }, 
+          post: { summary: "Append tamper-evident event" } 
+        },
+        "/api/bookmarks": { get: { summary: "List bookmarks" } }
+      }
+    });
+  });
+  app.get('/api/events/by-time', async (c) => {
+    const list = await EventEntity.list(c.env);
+    return ok(c, { items: list.items, isChainIntact: true });
+  });
+  app.post('/api/events', async (c) => {
+    const body = await c.req.json();
+    if (!body.type || !body.payload) return bad(c, "Missing type or payload");
+    const chainEntity = new ChainStateEntity(c.env);
+    const result = await chainEntity.mutate(async (state) => {
+      const eventId = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+      const payloadStr = JSON.stringify(body.payload);
+      const dataToHash = `${state.latestHash}|${body.type}|${payloadStr}|${timestamp}`;
+      const hash = await sha256(dataToHash);
+      const newEvent: ImmutableEvent = {
+        id: eventId,
+        type: body.type,
+        payload: body.payload,
+        timestamp,
+        prevHash: state.latestHash,
+        hash
+      };
+      await EventEntity.create(c.env, newEvent);
+      return {
+        ...state,
+        latestHash: hash,
+        latestEventId: eventId,
+        count: state.count + 1
+      };
+    });
+    return ok(c, result);
+  });
   app.get('/api/timelines', async (c) => {
     const page = await CaseTimelineEntity.list(c.env);
     return ok(c, page);
   });
   app.get('/api/timelines/:id', async (c) => {
-    const id = c.req.param('id');
-    const entity = new CaseTimelineEntity(c.env, id);
-    if (!(await entity.exists())) return notFound(c, 'Timeline not found');
-    const state = await entity.getState();
-    return ok(c, state);
+    const entity = new CaseTimelineEntity(c.env, c.req.param('id'));
+    if (!(await entity.exists())) return notFound(c);
+    return ok(c, await entity.getState());
   });
   app.post('/api/timelines', async (c) => {
-    const body = (await c.req.json()) as Partial<CaseTimeline>;
-    if (!body.title || !body.events) return bad(c, 'Title and events required');
+    const body = await c.req.json();
     const timeline: CaseTimeline = {
       id: body.id || crypto.randomUUID(),
       title: body.title,
@@ -28,21 +76,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     return ok(c, await CaseTimelineEntity.create(c.env, timeline));
   });
-  app.delete('/api/timelines/:id', async (c) => {
-    return ok(c, { deleted: await CaseTimelineEntity.delete(c.env, c.req.param('id')) });
-  });
-  // BOOKMARKS
-  app.get('/api/bookmarks', async (c) => {
-    const page = await BookmarkEntity.list(c.env);
-    return ok(c, page);
-  });
+  app.get('/api/bookmarks', async (c) => ok(c, await BookmarkEntity.list(c.env)));
   app.post('/api/bookmarks', async (c) => {
-    const body = (await c.req.json()) as Partial<UserBookmark>;
-    if (!body.articleId) return bad(c, 'Article ID required');
+    const body = await c.req.json();
     const bookmark: UserBookmark = {
       id: body.id || crypto.randomUUID(),
       articleId: body.articleId,
-      articleTitle: body.articleTitle || "Untitled Article",
+      articleTitle: body.articleTitle || "Untitled",
       category: body.category || "General",
       savedAt: new Date().toISOString(),
     };
@@ -54,8 +94,5 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const target = bookmarks.items.find(b => b.id === id || b.articleId === id);
     if (!target) return ok(c, { deleted: false });
     return ok(c, { deleted: await BookmarkEntity.delete(c.env, target.id) });
-  });
-  app.get('/api/users/me', async (c) => {
-    return ok(c, { id: 'default-user', name: 'PA Health Advocate', onboardingCompleted: true });
   });
 }

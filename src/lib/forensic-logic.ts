@@ -1,10 +1,8 @@
 import { ForensicEvent, ViolationResult } from '@/types/domain';
-import { differenceInDays, isBefore, addDays } from 'date-fns';
+import { differenceInDays, isBefore, addDays, format } from 'date-fns';
 export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
   const violations: ViolationResult[] = [];
-  // Safe date conversion for persisted data (ISO strings)
   const getEventDate = (e: ForensicEvent) => new Date(e.date);
-  // Rule 1: Medical Records Request (30 Day Limit - Act 169)
   const request = events.find(e => e.type === 'request');
   const receipt = events.find(e => e.type === 'receipt');
   if (request && receipt) {
@@ -22,7 +20,6 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
       remedy: isViolation ? "File a complaint with the PA Department of Health for non-compliance with Act 169." : undefined
     } as any);
   }
-  // Rule 2: Serious Event Disclosure (7 Day Limit - MCARE)
   const incident = events.find(e => e.type === 'filing');
   const notification = events.find(e => e.type === 'receipt' && e.label.toLowerCase().includes('notice'));
   if (incident && notification) {
@@ -40,7 +37,6 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
       remedy: isViolation ? "Request a formal review of the incident from the hospital Patient Safety Officer." : undefined
     } as any);
   }
-  // Rule 4: Informed Consent Documentation
   const procedure = events.find(e => e.label.toLowerCase().includes('surgery') || e.label.toLowerCase().includes('procedure'));
   if (procedure && receipt) {
     const hasConsent = receipt.notes?.toLowerCase().includes('consent') || receipt.label.toLowerCase().includes('signed');
@@ -56,7 +52,6 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
       } as any);
     }
   }
-  // Rule 5: Appeal Deadline (PA Department of Health)
   const denial = events.find(e => e.label.toLowerCase().includes('denial') || e.label.toLowerCase().includes('denied'));
   if (denial) {
     const today = new Date();
@@ -66,7 +61,7 @@ export function analyzeTimeline(events: ForensicEvent[]): ViolationResult[] {
       id: 'v-appeal-60d',
       severity: isExpired ? 'high' : 'medium',
       title: 'DOH Appeal Window',
-      description: isExpired 
+      description: isExpired
         ? "The standard 60-day window for filing an appeal with the PA Department of Health has passed."
         : `You have until ${format(deadline, 'PPP')} to file a formal appeal (60 days from denial).`,
       statute: '28 Pa. Code § 51.3',

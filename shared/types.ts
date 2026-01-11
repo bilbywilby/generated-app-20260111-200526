@@ -23,6 +23,24 @@ export interface UserBookmark {
   category: string;
   savedAt: string;
 }
+export interface ImmutableEvent {
+  id: string;
+  type: string;
+  payload: Record<string, any>;
+  timestamp: string;
+  prevHash: string;
+  hash: string;
+}
+export interface ChainState {
+  id: string;
+  latestHash: string;
+  latestEventId: string;
+  count: number;
+}
+export interface AuditLogResponse {
+  items: ImmutableEvent[];
+  isChainIntact: boolean;
+}
 export interface Chat {
   id: string;
   title: string;

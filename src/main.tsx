@@ -16,6 +16,7 @@ import { WikiPage } from '@/pages/WikiPage'
 import { ForensicToolPage } from '@/pages/ForensicToolPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ReportViewPage } from '@/pages/ReportViewPage'
+import { ProvenancePage } from '@/pages/ProvenancePage'
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -36,6 +37,11 @@ const router = createBrowserRouter([
   {
     path: "/tool",
     element: <ForensicToolPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/wiki/:id/provenance",
+    element: <ProvenancePage />,
     errorElement: <RouteErrorBoundary />,
   },
   {
