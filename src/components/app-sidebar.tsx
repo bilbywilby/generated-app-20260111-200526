@@ -3,14 +3,11 @@ import {
   BookOpen,
   FileSearch,
   Home,
-  Settings,
   ShieldCheck,
-  Scale,
   LayoutDashboard,
-  ExternalLink,
+  CloudCheck,
+  TrendingUp,
   MessageCircleQuestion,
-  User,
-  CloudCheck
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -35,6 +32,7 @@ export function AppSidebar(): JSX.Element {
   const toolItems = [
     { title: "Rights Wiki", icon: BookOpen, path: "/wiki" },
     { title: "Forensic Analyzer", icon: FileSearch, path: "/tool" },
+    { title: "Insurance Navigator", icon: TrendingUp, path: "/insurance" },
   ];
   return (
     <Sidebar variant="sidebar" collapsible="icon">

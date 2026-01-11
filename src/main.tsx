@@ -17,6 +17,7 @@ import { ForensicToolPage } from '@/pages/ForensicToolPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ReportViewPage } from '@/pages/ReportViewPage'
 import { ProvenancePage } from '@/pages/ProvenancePage'
+import { InsuranceNavigatorPage } from '@/pages/InsuranceNavigatorPage'
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -47,6 +48,11 @@ const router = createBrowserRouter([
   {
     path: "/report/:id",
     element: <ReportViewPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/insurance",
+    element: <InsuranceNavigatorPage />,
     errorElement: <RouteErrorBoundary />,
   },
 ]);

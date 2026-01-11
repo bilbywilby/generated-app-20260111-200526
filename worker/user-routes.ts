@@ -1,8 +1,17 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, CaseTimelineEntity, BookmarkEntity, EventEntity, ChainStateEntity, WikiArticleEntity } from "./entities";
+import { 
+  UserEntity, 
+  CaseTimelineEntity, 
+  BookmarkEntity, 
+  EventEntity, 
+  ChainStateEntity, 
+  WikiArticleEntity,
+  HealthRateEntity,
+  CountyMappingEntity
+} from "./entities";
 import { ok, bad, notFound } from './core-utils';
-import type { CaseTimeline, UserBookmark, ImmutableEvent, ChainState, WikiArticle } from "@shared/types";
+import type { CaseTimeline, UserBookmark, ImmutableEvent, ChainState, WikiArticle, SubsidyCalculation } from "@shared/types";
 async function sha256(message: string) {
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -44,6 +53,39 @@ async function logEvent(env: Env, type: string, payload: any, resourceId?: strin
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/health', (c) => ok(c, { status: "ok" }));
+  // Insurance Rates
+  app.get('/api/insurance-rates', async (c) => {
+    await HealthRateEntity.ensureSeed(c.env);
+    const list = await HealthRateEntity.list(c.env);
+    return ok(c, { items: list.items });
+  });
+  // County Lookups
+  app.get('/api/insurance-counties', async (c) => {
+    await CountyMappingEntity.ensureSeed(c.env);
+    const list = await CountyMappingEntity.list(c.env);
+    return ok(c, { items: list.items });
+  });
+  // Subsidy Calculator
+  app.post('/api/insurance-calculator', async (c) => {
+    const { income, ratingArea, benchmarkPremium } = await c.req.json();
+    // FPL 2024 for Single Person approx $15,060
+    const fpl = 15060;
+    const fplPercentage = (income / fpl) * 100;
+    // ARPA / IRA Subsidy logic: Max 8.5% of income for benchmark plan
+    const incomeCapRatio = 0.085;
+    const maxPremiumContribution = (income * incomeCapRatio) / 12;
+    const estimatedCredit = Math.max(0, benchmarkPremium - maxPremiumContribution);
+    const netPremium = Math.max(0, benchmarkPremium - estimatedCredit);
+    const calculation: SubsidyCalculation = {
+      householdIncome: income,
+      fplPercentage,
+      benchmarkPremium,
+      estimatedCredit,
+      netPremium,
+      incomeCapReached: benchmarkPremium > maxPremiumContribution
+    };
+    return ok(c, calculation);
+  });
   // Wiki Articles CRUD
   app.get('/api/wiki-articles', async (c) => {
     await WikiArticleEntity.ensureSeed(c.env);

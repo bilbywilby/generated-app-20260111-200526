@@ -11,7 +11,9 @@ import {
   ChevronRight,
   LayoutDashboard,
   BarChart3,
-  FileText
+  FileText,
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -33,7 +35,6 @@ export function DashboardPage() {
   const timelines = useMemo(() => timelinesData?.items || [], [timelinesData]);
   const bookmarks = useMemo(() => bookmarksData?.items || [], [bookmarksData]);
   const isLoading = loadingTimelines || loadingBookmarks;
-  // Analytics Logic
   const chartData = useMemo(() => {
     const counts: Record<string, number> = { "Access": 0, "Privacy": 0, "Billing": 0, "Consent": 0, "Quality": 0 };
     timelines.forEach(t => {
@@ -63,10 +64,10 @@ export function DashboardPage() {
     return count > 0 ? Math.round(totalDays / count) : 0;
   }, [timelines]);
   const stats = useMemo(() => [
-    { label: "Active Analyses", value: timelines.length.toString(), icon: FileSearch, color: "text-blue-500" },
+    { label: "GLP-1 Impact", value: "+4.2%", icon: Activity, color: "text-rose-500" },
     { label: "Avg Records Wait", value: `${avgRecordsDays} Days`, icon: Clock, color: "text-purple-500" },
     { label: "Bookmarked Rights", value: bookmarks.length.toString(), icon: Bookmark, color: "text-yellow-600" },
-  ], [timelines.length, avgRecordsDays, bookmarks.length]);
+  ], [avgRecordsDays, bookmarks.length]);
   const COLORS = ['#0ea5e9', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
   return (
     <AppLayout>
@@ -81,6 +82,11 @@ export function DashboardPage() {
             <p className="text-muted-foreground">Manage your medical rights cases and saved resources.</p>
           </div>
           <div className="flex items-center gap-3">
+            <Button asChild variant="outline" size="lg" className="rounded-full">
+              <Link to="/insurance">
+                <TrendingUp className="mr-2 h-4 w-4" /> Insurance Navigator
+              </Link>
+            </Button>
             <Button asChild size="lg" className="shadow-lg rounded-full">
               <Link to="/tool">
                 <Plus className="mr-2 h-4 w-4" /> New Case Analysis
@@ -146,15 +152,31 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="lg:col-span-5 flex flex-col gap-6">
+            <Card className="shadow-soft ring-1 ring-border bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                   <TrendingUp className="h-5 w-5 text-primary" />
+                   2026 Rate Insights
+                </CardTitle>
+                <CardDescription>Actuarial trends by rating area</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                 <p className="text-sm text-muted-foreground">
+                   Projected 2026 premium increases across PA are averaging 5.5%, largely driven by GLP-1 pharmaceutical utilization.
+                 </p>
+                 <Button className="w-full rounded-full" asChild>
+                   <Link to="/insurance">Open Insurance Navigator</Link>
+                 </Button>
+              </CardContent>
+            </Card>
             <Card className="shadow-soft ring-1 ring-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-primary" />
                   Violation Distribution
                 </CardTitle>
-                <CardDescription>Trends across your saved cases</CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px]">
+              <CardContent className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />

@@ -1,6 +1,20 @@
 import { IndexedEntity, Entity } from "./core-utils";
-import type { User, CaseTimeline, UserBookmark, ImmutableEvent, ChainState, WikiArticle } from "@shared/types";
-import { MOCK_USERS, MOCK_WIKI_ARTICLES } from "@shared/mock-data";
+import type { 
+  User, 
+  CaseTimeline, 
+  UserBookmark, 
+  ImmutableEvent, 
+  ChainState, 
+  WikiArticle,
+  HealthRate,
+  CountyMapping
+} from "@shared/types";
+import { 
+  MOCK_USERS, 
+  MOCK_WIKI_ARTICLES,
+  MOCK_HEALTH_RATES,
+  MOCK_COUNTY_MAPPINGS
+} from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
@@ -20,6 +34,29 @@ export class WikiArticleEntity extends IndexedEntity<WikiArticle> {
     authorObf: "system"
   };
   static seedData = MOCK_WIKI_ARTICLES;
+}
+export class HealthRateEntity extends IndexedEntity<HealthRate> {
+  static readonly entityName = "health-rate";
+  static readonly indexName = "health-rates";
+  static readonly initialState: HealthRate = {
+    id: "",
+    carrier: "",
+    planType: "Silver",
+    ratingArea: 1,
+    basePremium2026: 0,
+    projectedIncrease: 0
+  };
+  static seedData = MOCK_HEALTH_RATES;
+}
+export class CountyMappingEntity extends IndexedEntity<CountyMapping> {
+  static readonly entityName = "county-mapping";
+  static readonly indexName = "county-mappings";
+  static readonly initialState: CountyMapping = {
+    id: "",
+    county: "",
+    ratingArea: 1
+  };
+  static seedData = MOCK_COUNTY_MAPPINGS;
 }
 export class CaseTimelineEntity extends IndexedEntity<CaseTimeline> {
   static readonly entityName = "case-timeline";

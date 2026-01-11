@@ -1,8 +1,29 @@
-export type RightCategory = 'Privacy' | 'Billing' | 'Access' | 'Consent' | 'Quality';
+export type RightCategory = 'Privacy' | 'Billing' | 'Access' | 'Consent' | 'Quality' | 'Insurance';
+export interface HealthRate {
+  id: string;
+  carrier: string;
+  planType: 'Bronze' | 'Silver' | 'Gold';
+  ratingArea: number;
+  basePremium2026: number;
+  projectedIncrease: number;
+}
+export interface CountyMapping {
+  id: string;
+  county: string;
+  ratingArea: number;
+}
+export interface SubsidyCalculation {
+  householdIncome: number;
+  fplPercentage: number;
+  benchmarkPremium: number;
+  estimatedCredit: number;
+  netPremium: number;
+  incomeCapReached: boolean;
+}
 export interface ForensicEvent {
   id: string;
   type: 'request' | 'receipt' | 'discharge' | 'filing';
-  date: string | Date; // Date as string for serializability, converted to Date in logic
+  date: string | Date;
   label: string;
   notes?: string;
 }
@@ -35,6 +56,11 @@ export interface WikiArticle {
   lastUpdated: string;
   authorObf: string;
   deleted?: boolean;
+  actuarialSection?: {
+    analysis: string;
+    impactScore: number;
+    glp1Influence: boolean;
+  };
 }
 export interface WikiArticleInput {
   title: string;
@@ -42,6 +68,7 @@ export interface WikiArticleInput {
   summary: string;
   content: string;
   statuteReference?: string;
+  actuarialSection?: WikiArticle['actuarialSection'];
 }
 export interface CaseTimeline {
   id: string;
