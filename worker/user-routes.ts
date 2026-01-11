@@ -1,17 +1,26 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { 
-  UserEntity, 
-  CaseTimelineEntity, 
-  BookmarkEntity, 
-  EventEntity, 
-  ChainStateEntity, 
+import {
+  UserEntity,
+  CaseTimelineEntity,
+  BookmarkEntity,
+  EventEntity,
+  ChainStateEntity,
   WikiArticleEntity,
   HealthRateEntity,
   CountyMappingEntity
 } from "./entities";
 import { ok, bad, notFound } from './core-utils';
-import type { CaseTimeline, UserBookmark, ImmutableEvent, ChainState, WikiArticle, SubsidyCalculation } from "@shared/types";
+import type { 
+  CaseTimeline, 
+  UserBookmark, 
+  ImmutableEvent, 
+  ChainState, 
+  WikiArticle, 
+  SubsidyCalculation,
+  PIDFiling
+} from "@shared/types";
+import { MOCK_PID_FILINGS } from "@shared/mock-data";
 async function sha256(message: string) {
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -53,36 +62,64 @@ async function logEvent(env: Env, type: string, payload: any, resourceId?: strin
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/health', (c) => ok(c, { status: "ok" }));
-  // Insurance Rates
+  // Insurance Rates & Analytics
   app.get('/api/insurance-rates', async (c) => {
     await HealthRateEntity.ensureSeed(c.env);
     const list = await HealthRateEntity.list(c.env);
     return ok(c, { items: list.items });
   });
-  // County Lookups
+  app.get('/api/insurance-heatmap', async (c) => {
+    await HealthRateEntity.ensureSeed(c.env);
+    const list = await HealthRateEntity.list(c.env);
+    const averages = Array.from({ length: 9 }, (_, i) => {
+      const area = i + 1;
+      const areaRates = list.items.filter(r => r.ratingArea === area && r.planType === 'Silver');
+      const avg = areaRates.length > 0 
+        ? areaRates.reduce((acc, r) => acc + r.basePremium2026, 0) / areaRates.length 
+        : 0;
+      const avgIncrease = areaRates.length > 0
+        ? areaRates.reduce((acc, r) => acc + r.projectedIncrease, 0) / areaRates.length
+        : 0;
+      return { ratingArea: area, avgPremium: avg, avgIncrease };
+    });
+    return ok(c, { items: averages });
+  });
   app.get('/api/insurance-counties', async (c) => {
     await CountyMappingEntity.ensureSeed(c.env);
     const list = await CountyMappingEntity.list(c.env);
     return ok(c, { items: list.items });
   });
-  // Subsidy Calculator
+  app.get('/api/pid-filings', async (c) => {
+    const query = c.req.query('q')?.toLowerCase() || '';
+    const filtered = MOCK_PID_FILINGS.filter(f => 
+      f.carrier.toLowerCase().includes(query) || 
+      f.filingNumber.toLowerCase().includes(query)
+    );
+    return ok(c, { items: filtered });
+  });
   app.post('/api/insurance-calculator', async (c) => {
-    const { income, ratingArea, benchmarkPremium } = await c.req.json();
-    // FPL 2024 for Single Person approx $15,060
-    const fpl = 15060;
-    const fplPercentage = (income / fpl) * 100;
-    // ARPA / IRA Subsidy logic: Max 8.5% of income for benchmark plan
+    const { income, householdSize, ratingArea, benchmarkPremium } = await c.req.json();
+    // 2024 FPL for 48 states: $15,060 for 1st person, +$5,380 per additional person
+    const baseFPL = 15060;
+    const additionalPersonRate = 5380;
+    const fplThreshold = baseFPL + ((householdSize - 1) * additionalPersonRate);
+    const fplPercentage = (income / fplThreshold) * 100;
+    // ARPA/IRA "No Cliff" Subsidy logic (applicable through 2025/2026 pending legislation)
+    // Max 8.5% of income for benchmark silver plan regardless of FPL height
     const incomeCapRatio = 0.085;
-    const maxPremiumContribution = (income * incomeCapRatio) / 12;
-    const estimatedCredit = Math.max(0, benchmarkPremium - maxPremiumContribution);
+    const annualMaxContribution = income * incomeCapRatio;
+    const monthlyMaxContribution = annualMaxContribution / 12;
+    const estimatedCredit = Math.max(0, benchmarkPremium - monthlyMaxContribution);
     const netPremium = Math.max(0, benchmarkPremium - estimatedCredit);
     const calculation: SubsidyCalculation = {
       householdIncome: income,
+      householdSize,
       fplPercentage,
+      fplThreshold,
       benchmarkPremium,
       estimatedCredit,
       netPremium,
-      incomeCapReached: benchmarkPremium > maxPremiumContribution
+      incomeCapReached: benchmarkPremium > monthlyMaxContribution
     };
     return ok(c, calculation);
   });

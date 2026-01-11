@@ -3,8 +3,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
-  FileSearch,
   Bookmark,
   Plus,
   Clock,
@@ -13,13 +13,14 @@ import {
   BarChart3,
   FileText,
   TrendingUp,
-  Activity
+  Activity,
+  MapPin
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { CaseTimeline, UserBookmark } from '@shared/types';
+import { CaseTimeline, UserBookmark, HealthRate } from '@shared/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { analyzeTimeline } from '@/lib/forensic-logic';
 import { differenceInDays, format } from 'date-fns';
@@ -32,9 +33,28 @@ export function DashboardPage() {
     queryKey: ['bookmarks'],
     queryFn: () => api<{ items: UserBookmark[] }>('/api/bookmarks')
   });
+  const { data: heatmapData, isLoading: loadingHeatmap } = useQuery({
+    queryKey: ['insurance-heatmap'],
+    queryFn: () => api<{ items: { ratingArea: number; avgPremium: number; avgIncrease: number }[] }>('/api/insurance-heatmap')
+  });
   const timelines = useMemo(() => timelinesData?.items || [], [timelinesData]);
   const bookmarks = useMemo(() => bookmarksData?.items || [], [bookmarksData]);
-  const isLoading = loadingTimelines || loadingBookmarks;
+  const heatmaps = useMemo(() => heatmapData?.items || [], [heatmapData]);
+  const isLoading = loadingTimelines || loadingBookmarks || loadingHeatmap;
+  // Analysis of statewide cost variance
+  const costVariance = useMemo(() => {
+    if (heatmaps.length === 0) return { diff: 0, high: 0, low: 0 };
+    const sorted = [...heatmaps].sort((a, b) => a.avgPremium - b.avgPremium);
+    return {
+      low: sorted[0].avgPremium,
+      high: sorted[sorted.length - 1].avgPremium,
+      diff: sorted[sorted.length - 1].avgPremium - sorted[0].avgPremium
+    };
+  }, [heatmaps]);
+  const avgStatewidePremium = useMemo(() => {
+    if (heatmaps.length === 0) return 0;
+    return heatmaps.reduce((acc, h) => acc + h.avgPremium, 0) / heatmaps.length;
+  }, [heatmaps]);
   const chartData = useMemo(() => {
     const counts: Record<string, number> = { "Access": 0, "Privacy": 0, "Billing": 0, "Consent": 0, "Quality": 0 };
     timelines.forEach(t => {
@@ -50,24 +70,11 @@ export function DashboardPage() {
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [timelines]);
-  const avgRecordsDays = useMemo(() => {
-    let totalDays = 0;
-    let count = 0;
-    timelines.forEach(t => {
-      const req = t.events.find(e => e.type === 'request');
-      const rec = t.events.find(e => e.type === 'receipt');
-      if (req && rec) {
-        totalDays += differenceInDays(new Date(rec.date), new Date(req.date));
-        count++;
-      }
-    });
-    return count > 0 ? Math.round(totalDays / count) : 0;
-  }, [timelines]);
   const stats = useMemo(() => [
-    { label: "GLP-1 Impact", value: "+4.2%", icon: Activity, color: "text-rose-500" },
-    { label: "Avg Records Wait", value: `${avgRecordsDays} Days`, icon: Clock, color: "text-purple-500" },
+    { label: "Statewide Avg Premium", value: `$${Math.round(avgStatewidePremium)}`, icon: Activity, color: "text-blue-500" },
+    { label: "Regional Variance", value: `$${Math.round(costVariance.diff)}`, icon: MapPin, color: "text-purple-500" },
     { label: "Bookmarked Rights", value: bookmarks.length.toString(), icon: Bookmark, color: "text-yellow-600" },
-  ], [avgRecordsDays, bookmarks.length]);
+  ], [avgStatewidePremium, costVariance.diff, bookmarks.length]);
   const COLORS = ['#0ea5e9', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
   return (
     <AppLayout>
@@ -79,7 +86,7 @@ export function DashboardPage() {
               Advocate Hub
             </div>
             <h1 className="text-4xl font-display font-bold tracking-tight">Your Dashboard</h1>
-            <p className="text-muted-foreground">Manage your medical rights cases and saved resources.</p>
+            <p className="text-muted-foreground">Manage your medical rights cases and insurance navigation.</p>
           </div>
           <div className="flex items-center gap-3">
             <Button asChild variant="outline" size="lg" className="rounded-full">
@@ -158,12 +165,16 @@ export function DashboardPage() {
                    <TrendingUp className="h-5 w-5 text-primary" />
                    2026 Rate Insights
                 </CardTitle>
-                <CardDescription>Actuarial trends by rating area</CardDescription>
+                <CardDescription>Actuarial variance by rating area</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                  <p className="text-sm text-muted-foreground">
-                   Projected 2026 premium increases across PA are averaging 5.5%, largely driven by GLP-1 pharmaceutical utilization.
+                   Projected 2026 premiums show a <span className="font-bold text-foreground">${Math.round(costVariance.diff)}</span> variance between PA rating areas. The highest premiums are currently in Area 9 (SEPA).
                  </p>
+                 <div className="flex items-center gap-2">
+                   <Badge className="bg-rose-500 hover:bg-rose-600 border-none">GLP-1 High Impact</Badge>
+                   <Link to="/insurance" className="text-xs text-primary font-bold hover:underline">See Analysis &rarr;</Link>
+                 </div>
                  <Button className="w-full rounded-full" asChild>
                    <Link to="/insurance">Open Insurance Navigator</Link>
                  </Button>

@@ -6,6 +6,8 @@ export interface HealthRate {
   ratingArea: number;
   basePremium2026: number;
   projectedIncrease: number;
+  glp1Covered: boolean;
+  avgDeductible: number;
 }
 export interface CountyMapping {
   id: string;
@@ -14,11 +16,29 @@ export interface CountyMapping {
 }
 export interface SubsidyCalculation {
   householdIncome: number;
+  householdSize: number;
   fplPercentage: number;
+  fplThreshold: number;
   benchmarkPremium: number;
   estimatedCredit: number;
   netPremium: number;
   incomeCapReached: boolean;
+}
+export interface CarrierComparison {
+  plans: HealthRate[];
+  metrics: {
+    monthlySavings: number;
+    deductibleDiff: number;
+    glp1Parity: boolean;
+  };
+}
+export interface PIDFiling {
+  id: string;
+  filingNumber: string;
+  carrier: string;
+  status: 'Pending' | 'Approved' | 'Disapproved';
+  dateSubmitted: string;
+  description: string;
 }
 export interface ForensicEvent {
   id: string;
