@@ -1,30 +1,31 @@
-/*
-Wraps children in a sidebar layout. Don't use this if you don't need a sidebar
-*/
 import React from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-
+import { ThemeToggle } from "@/components/ThemeToggle";
 type AppLayoutProps = {
   children: React.ReactNode;
   container?: boolean;
-  className?: string;
-  contentClassName?: string;
 };
-
-export function AppLayout({ children, container = false, className, contentClassName }: AppLayoutProps): JSX.Element {
+export function AppLayout({ children, container = true }: AppLayoutProps): JSX.Element {
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={true}>
       <AppSidebar />
-      <SidebarInset className={className}>
-        <div className="absolute left-2 top-2 z-20">
+      <SidebarInset className="relative flex flex-col min-h-screen bg-background">
+        <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 backdrop-blur px-4">
           <SidebarTrigger />
-        </div>
-        {container ? (
-          <div className={"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12" + (contentClassName ? ` ${contentClassName}` : "")}>{children}</div>
-        ) : (
-          children
-        )}
+          <div className="ml-auto flex items-center gap-4">
+            <ThemeToggle className="relative top-0 right-0" />
+          </div>
+        </header>
+        <main className="flex-1">
+          {container ? (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
