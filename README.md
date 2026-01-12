@@ -1,6 +1,6 @@
 # Cloudflare Workers + React Boilerplate
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bilbywilby/generated-app-20260111-200526)
 
 A production-ready full-stack boilerplate for Cloudflare Workers, featuring a React frontend with Tailwind CSS & shadcn/ui, Hono backend with Durable Objects for stateful entities (Users, Chats, Messages), TanStack Query for data fetching, and seamless local development/deploy.
 
@@ -118,7 +118,7 @@ Seed data loads automatically on first request (`MOCK_USERS`, etc., editable in 
    - Bind custom domain in Wrangler dashboard.
    - For Pages: `wrangler pages deploy dist` (after `bun run build`).
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bilbywilby/generated-app-20260111-200526)
 
 ## Environment Variables
 
